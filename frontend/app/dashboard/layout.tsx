@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { WebStackProSidebar } from "@/components/dashboard/sidebar";
 import { useWebStackPro } from "@/lib/store";
+import { supabase } from "@/lib/supabase";
+import { webstackpro } from "@/lib/api";
 
 /**
  * WebStackPro Dashboard Layout
@@ -13,22 +15,65 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter();
   const pathname = usePathname();
   const setBusiness = useWebStackPro((s) => s.setBusiness);
+  const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem("webstackpro_token");
-    if (!token) {
-      router.replace("/login");
-      return;
-    }
-    const cached = localStorage.getItem("webstackpro_business");
-    if (cached) {
-      try {
-        setBusiness(JSON.parse(cached));
-      } catch (_) {
-        /* ignore malformed cache */
+    async function syncSession() {
+      const token = localStorage.getItem("webstackpro_token");
+      if (token) {
+        setChecking(false);
+        return;
+      }
+      // Arriving from an email confirmation link or OAuth redirect: the user has
+      // a valid Supabase session but no WebStackPro token yet — exchange it now.
+      if (supabase) {
+        const { data } = await supabase.auth.getSession();
+        const user = data.session?.user;
+        if (user) {
+          try {
+            const res = await webstackpro.post<{ token: string; business: { id: string; name: string; plan: string; planActive: boolean } }>(
+              "/auth/exchange",
+              {
+                ownerId: user.id,
+                email: user.email,
+                name: (user.user_metadata?.full_name as string) || (user.user_metadata?.name as string) || "Agent",
+              }
+            );
+            localStorage.setItem("webstackpro_token", res.token);
+            localStorage.setItem("webstackpro_business", JSON.stringify(res.business));
+            setBusiness(res.business);
+            setChecking(false);
+            return;
+          } catch (_) {
+            /* fall through to cached-token guard below */
+          }
+        }
+      }
+      const cached = localStorage.getItem("webstackpro_business");
+      if (cached) {
+        try {
+          setBusiness(JSON.parse(cached));
+        } catch (_) {
+          /* ignore malformed cache */
+        }
+      }
+      setChecking(false);
+      if (!localStorage.getItem("webstackpro_token")) {
+        router.replace("/login");
       }
     }
+    void syncSession();
   }, [router, setBusiness]);
+
+  if (checking) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-navy">
+        <span className="font-display text-lg font-extrabold text-white">
+          WebStack<span className="text-cyan">Pro</span>
+        </span>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">

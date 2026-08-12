@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Mail, Lock, LoaderCircle, ArrowLeft } from "lucide-react";
+import { Mail, Lock, User, LoaderCircle, ArrowLeft } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { webstackpro } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -12,27 +12,22 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { WebStackProLogo, WebStackProWordmark } from "@/components/layout/webstackpro-logo";
 
-export default function LoginPage() {
+export default function SignupPage() {
   const router = useRouter();
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [needConfirm, setNeedConfirm] = useState(false);
 
-  useEffect(() => {
-    // Already signed in on WebStackPro? Go to the dashboard.
-    if (localStorage.getItem("webstackpro_token")) {
-      router.replace("/dashboard");
-    }
-  }, [router]);
-
-  async function exchangeSession(user: { id: string; email?: string; user_metadata?: Record<string, unknown> }) {
+  async function finishSignup(user: { id: string; email?: string; user_metadata?: Record<string, unknown> }) {
     const res = await webstackpro.post<{ token: string; business: { id: string; name: string; plan: string; planActive: boolean } }>(
       "/auth/exchange",
       {
         ownerId: user.id,
         email: user.email,
-        name: (user.user_metadata?.full_name as string) || (user.user_metadata?.name as string) || "Agent",
+        name: fullName.trim() || "My WebStackPro Business",
       }
     );
     localStorage.setItem("webstackpro_token", res.token);
@@ -40,7 +35,7 @@ export default function LoginPage() {
     router.replace("/dashboard");
   }
 
-  async function handleEmailLogin(e: FormEvent) {
+  async function handleSignup(e: FormEvent) {
     e.preventDefault();
     setError("");
     setLoading(true);
@@ -48,54 +43,39 @@ export default function LoginPage() {
       if (!supabase) {
         throw new Error("WebStackPro: Supabase is not configured. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.");
       }
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error || !data.user) throw new Error(error?.message || "WebStackPro: unable to sign in");
-      await exchangeSession(data.user);
+      if (password.length < 6) {
+        throw new Error("WebStackPro: password must be at least 6 characters");
+      }
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { full_name: fullName.trim() || "Owner" },
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+      if (error) throw error;
+      if (!data.user) throw new Error("WebStackPro: unable to create account");
+
+      // If email confirmation is on, tell the user to check their inbox.
+      if (data.session === null) {
+        setNeedConfirm(true);
+        setLoading(false);
+        return;
+      }
+      await finishSignup(data.user);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "WebStackPro sign in failed");
-    } finally {
+      setError(err instanceof Error ? err.message : "WebStackPro sign up failed");
       setLoading(false);
     }
   }
-
-  async function handleGoogleLogin() {
-    setError("");
-    try {
-      if (!supabase) {
-        throw new Error("WebStackPro: Supabase is not configured. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.");
-      }
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: { redirectTo: `${window.location.origin}/dashboard` },
-      });
-      if (error) throw error;
-      void data;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "WebStackPro Google login failed");
-    }
-  }
-
-  // Handle OAuth redirect back into the app.
-  useEffect(() => {
-    if (!supabase) return;
-    void supabase.auth.getSession().then(async ({ data }) => {
-      const { session } = data;
-      if (session?.user && !localStorage.getItem("webstackpro_token")) {
-        await exchangeSession(session.user);
-      }
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   return (
     <main className="webstackpro-navy-gradient flex min-h-screen items-center justify-center px-4 py-10">
       <div className="pointer-events-none absolute left-0 top-0 h-72 w-72 rounded-full bg-cyan/10 blur-3xl" />
 
       <div className="relative w-full max-w-md">
-        <Link
-          href="/"
-          className="mb-6 inline-flex items-center gap-1.5 text-sm text-white/70 transition hover:text-cyan"
-        >
+        <Link href="/" className="mb-6 inline-flex items-center gap-1.5 text-sm text-white/70 transition hover:text-cyan">
           <ArrowLeft className="h-4 w-4" /> Back to WebStackPro
         </Link>
 
@@ -104,21 +84,40 @@ export default function LoginPage() {
             <div className="flex flex-col items-center text-center">
               <WebStackProLogo size={56} />
               <WebStackProWordmark className="mt-4" />
-              <h1 className="mt-6 font-display text-2xl font-extrabold text-navy">Login to WebStackPro</h1>
+              <h1 className="mt-6 font-display text-2xl font-extrabold text-navy">Create your WebStackPro account</h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                Automate. Convert. Grow. — your unified inbox awaits.
+                Start your free 14-day trial — no card required.
               </p>
             </div>
 
-            {error && (
-              <div className="mt-6 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                {error}
+            {needConfirm && (
+              <div className="mt-6 rounded-lg border border-cyan/40 bg-cyan/10 p-3 text-sm text-navy">
+                Almost done! We sent a confirmation link to <b>{email}</b>. Click it, then sign in.
               </div>
             )}
 
-            <form onSubmit={handleEmailLogin} className="mt-6 space-y-4">
+            {error && (
+              <div className="mt-6 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>
+            )}
+
+            <form onSubmit={handleSignup} className="mt-6 space-y-4">
               <div className="space-y-1.5">
-                <Label htmlFor="email">WebStackPro Email</Label>
+                <Label htmlFor="fullName">Business / Full name</Label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    id="fullName"
+                    type="text"
+                    placeholder="E.g. Chioma's Boutique"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="email">Email</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
@@ -140,7 +139,7 @@ export default function LoginPage() {
                   <Input
                     id="password"
                     type="password"
-                    placeholder="••••••••"
+                    placeholder="At least 6 characters"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
@@ -152,26 +151,18 @@ export default function LoginPage() {
               <Button type="submit" variant="navy" disabled={loading} className="w-full">
                 {loading ? (
                   <>
-                    <LoaderCircle className="h-4 w-4 animate-spin" /> Signing into WebStackPro...
+                    <LoaderCircle className="h-4 w-4 animate-spin" /> Creating your WebStackPro account...
                   </>
                 ) : (
-                  "Login to WebStackPro"
+                  "Start my free WebStackPro trial"
                 )}
               </Button>
             </form>
 
-            <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground">
-              <span className="h-px flex-1 bg-border" /> or continue with <span className="h-px flex-1 bg-border" />
-            </div>
-
-            <Button variant="outline" className="w-full" onClick={handleGoogleLogin}>
-              Sign in with Google
-            </Button>
-
             <p className="mt-6 text-center text-sm text-muted-foreground">
-              New here?{" "}
-              <Link href="/signup" className="font-semibold text-cyan-dark hover:underline">
-                Start your free WebStackPro trial
+              Already have an account?{" "}
+              <Link href="/login" className="font-semibold text-cyan-dark hover:underline">
+                Login to WebStackPro
               </Link>
             </p>
           </CardContent>
