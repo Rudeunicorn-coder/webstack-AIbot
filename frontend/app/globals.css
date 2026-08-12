@@ -1,0 +1,104 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   WebStackPro Design Tokens
+   Colors: #0A1F44 Navy | #00D4FF Cyan | #FFFFFF White
+   ============================================================ */
+
+@layer base {
+  :root {
+    --background: 222 77% 97%;
+    --foreground: 222 68% 15%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 68% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 68% 15%;
+    --primary: 222 74% 15%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 200 100% 50%;
+    --secondary-foreground: 222 74% 15%;
+    --muted: 222 30% 94%;
+    --muted-foreground: 222 20% 40%;
+    --accent: 192 100% 50%;
+    --accent-foreground: 222 74% 15%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 222 40% 88%;
+    --input: 222 40% 86%;
+    --ring: 192 100% 50%;
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    --background: 222 74% 10%;
+    --foreground: 192 40% 96%;
+    --card: 222 60% 13%;
+    --card-foreground: 192 40% 96%;
+    --popover: 222 60% 13%;
+    --popover-foreground: 192 40% 96%;
+    --primary: 0 0% 100%;
+    --primary-foreground: 222 74% 10%;
+    --secondary: 192 100% 50%;
+    --secondary-foreground: 222 74% 10%;
+    --muted: 222 45% 20%;
+    --muted-foreground: 222 30% 70%;
+    --accent: 192 100% 50%;
+    --accent-foreground: 222 74% 10%;
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 222 45% 24%;
+    --input: 222 45% 24%;
+    --ring: 192 100% 50%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: 'rlig' 1, 'calt' 1;
+  }
+
+  /* WebStackPro gradient text helper */
+  .webstackpro-gradient {
+    background: linear-gradient(90deg, #00d4ff 0%, #38bdf8 60%, #ffffff 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .webstackpro-navy-gradient {
+    background: linear-gradient(135deg, #0a1f44 0%, #122e63 60%, #1b3f85 100%);
+  }
+
+  /* Scrollbars tuned for the WebStackPro dashboard */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(0, 212, 255, 0.35);
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 212, 255, 0.6);
+  }
+}
+
+@layer utilities {
+  @media (min-width: 768px) {
+    .hide-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .hide-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "name": "webstackpro",
+  "version": "1.0.0",
+  "private": true,
+  "description": "WebStackPro - Automate. Convert. Grow. 24/7 AI Agent + Unified Inbox for Nigerian businesses.",
+  "workspaces": ["frontend", "backend"],
+  "scripts": {
+    "dev": "concurrently -n WebStackPro-API,WebStackPro-UI -c cyan,blue \"npm run dev --workspace backend\" \"npm run dev --workspace frontend\"",
+    "dev:frontend": "npm run dev --workspace frontend",
+    "dev:backend": "npm run dev --workspace backend",
+    "worker": "npm run worker --workspace backend",
+    "build": "npm run build --workspace frontend",
+    "seed": "npm run seed --workspace backend",
+    "db:push": "npm run prisma:push --workspace backend",
+    "install:all": "npm install && npm run prisma:generate --workspace backend"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.1"
+  }
+}

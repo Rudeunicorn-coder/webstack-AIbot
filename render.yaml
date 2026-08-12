@@ -1,0 +1,78 @@
+# ============================================================================
+# WebStackPro Render Blueprint
+# One-click deploy for the backend API + AI worker on Render's free tier.
+#
+# Push this repo to GitHub, then in Render:  New + > Blueprint
+# and select the repo. Render reads this file and creates both services.
+#
+# You must fill in the env vars marked "REQUIRED" in the Render dashboard
+# (or as a "Blueprint Environment" group) before/after deploy.
+# ============================================================================
+
+services:
+  # --------------------------------------------------------------------------
+  # WebStackPro API  (Express + Socket.io, port 4000)
+  # --------------------------------------------------------------------------
+  - type: web
+    name: webstackpro-api
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install && npx prisma generate
+    startCommand: node src/index.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: PORT
+        value: "4000"
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false # set in Render dashboard — Supabase connection string
+      - key: JWT_SECRET
+        sync: false # set a long random string
+      - key: WEBHOOK_SECRET
+        sync: false # set a long random string
+      - key: FRONTEND_URL
+        sync: false # your deployed Vercel app URL, e.g. https://webstackpro.vercel.app
+      - key: API_PUBLIC_URL
+        sync: false # this service's own URL, e.g. https://webstackpro-api.onrender.com
+      - key: AI_PROVIDER
+        value: groq
+      - key: GROQ_API_KEY
+        sync: false # your gsk_... key
+      - key: AI_CONFIDENCE_THRESHOLD
+        value: "0.8"
+      - key: PLAN_STARTER_PRICE_NAIRA
+        value: "50000"
+      - key: PLAN_PRO_PRICE_NAIRA
+        value: "120000"
+      - key: TRIAL_DAYS
+        value: "14"
+      - key: PAYSTACK_SECRET_KEY
+        sync: false # add when billing is live
+      - key: PAYSTACK_PUBLIC_KEY
+        sync: false # add when billing is live
+      - key: REDIS_URL
+        sync: false # optional — leave empty for inline mode
+
+  # --------------------------------------------------------------------------
+  # WebStackPro AI Worker  (BullMQ consumer — only needed if REDIS_URL is set)
+  # --------------------------------------------------------------------------
+  - type: worker
+    name: webstackpro-worker
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install && npx prisma generate
+    startCommand: node src/jobs/worker.js
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: AI_PROVIDER
+        value: groq
+      - key: GROQ_API_KEY
+        sync: false
+      - key: REDIS_URL
+        sync: false # required for this worker to run; skip if inline mode

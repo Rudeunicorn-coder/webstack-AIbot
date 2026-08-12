@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Builds
+.next/
+out/
+dist/
+build/
+.nuxt/
+
+# Env files — WebStackPro secrets live in .env only
+.env
+.env.local
+.env*.local
+backend/uploads/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+boot.out
+boot.err
+*.out
+*.err
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Misc
+*.tsbuildinfo
+next-env.d.ts
+coverage/
+.vercel/
+railway.json
