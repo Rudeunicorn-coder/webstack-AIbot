@@ -50,6 +50,11 @@ app.use(
   })
 );
 
+// The website widget is embeddable on ANY customer site, so its public
+// endpoints must reflect whatever origin the page is served from. This
+// override runs after the restricted CORS above, so it wins for widget paths.
+app.use('/api/webhooks/webwidget', cors({ origin: true }));
+
 // Paystack webhook + Meta webhooks need the raw body for signature verification,
 // so parse JSON but store the raw string for HMAC checking.
 app.use(express.json({
