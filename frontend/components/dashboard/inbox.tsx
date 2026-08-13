@@ -90,8 +90,12 @@ export function WebStackProInbox() {
 
   const filtered = useMemo(() => {
     switch (filter) {
+      case "open":
+        return conversations.filter((c) => c.status === "ai" || c.status === "human");
+      case "resolved":
+        return conversations.filter((c) => c.status === "resolved");
       case "unread":
-        return conversations.filter((c) => c.unread);
+        return conversations.filter((c) => c.unread && c.status !== "resolved");
       case "ai":
         return conversations.filter((c) => c.status === "ai");
       case "human":
@@ -100,7 +104,7 @@ export function WebStackProInbox() {
       case "instagram":
       case "messenger":
       case "web":
-        return conversations.filter((c) => c.channel === filter);
+        return conversations.filter((c) => c.channel === filter && c.status !== "resolved");
       default:
         return conversations;
     }
@@ -108,15 +112,19 @@ export function WebStackProInbox() {
 
   const counts = useMemo(() => {
     const c: Record<string, number> = { all: conversations.length };
-    (["unread", "ai", "human", "whatsapp", "instagram", "messenger", "web"] as const).forEach((k) => {
+    (["open", "resolved", "unread", "ai", "human", "whatsapp", "instagram", "messenger", "web"] as const).forEach((k) => {
       c[k] = conversations.filter((x) =>
-        k === "unread"
-          ? x.unread
+        k === "open"
+          ? x.status === "ai" || x.status === "human"
+          : k === "resolved"
+          ? x.status === "resolved"
+          : k === "unread"
+          ? x.unread && x.status !== "resolved"
           : k === "ai"
           ? x.status === "ai"
           : k === "human"
           ? x.status === "human"
-          : x.channel === k
+          : x.channel === k && x.status !== "resolved"
       ).length;
     });
     return c;

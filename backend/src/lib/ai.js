@@ -15,10 +15,23 @@ const prisma = require('./prisma');
 
 const CONFIDENCE_THRESHOLD = Number(process.env.AI_CONFIDENCE_THRESHOLD || 0.8);
 
-function buildSystemPrompt(businessName, knowledge) {
+function buildSystemPrompt(businessName, knowledge, businessHours) {
   const kb = knowledge
     .map((k, i) => `[Doc ${i + 1}] ${k.content}`)
     .join('\n\n');
+
+  let hoursText = '';
+  if (businessHours && businessHours.enabled) {
+    const { days, open, close, timezone, awayMessage } = businessHours;
+    hoursText = [
+      ``,
+      `=== WebStackPro Business Hours ===`,
+      `Open days: ${(days || []).join(', ')}. Open from ${open} to ${close} (${timezone || 'Africa/Lagos'}).`,
+      `If the customer asks whether you are open now, use these hours to decide.`,
+      awayMessage ? `When outside business hours, politely mention: "${awayMessage}"` : '',
+      ``,
+    ].join('\n');
+  }
 
   return [
     `You are WebStackPro AI Assistant for ${businessName}.`,
@@ -29,7 +42,7 @@ function buildSystemPrompt(businessName, knowledge) {
     ``,
     `=== WebStackPro Knowledge Base ===`,
     kb || "(No knowledge base entries yet. Reply with the WebStackPro fallback line.)",
-    ``,
+    hoursText,
     `RULES:`,
     `- Never invent prices, policies or details not present in the Knowledge Base.`,
     `- Keep answers under 40 words.`,
@@ -41,8 +54,8 @@ function buildSystemPrompt(businessName, knowledge) {
  * Decide if GPT is confident. We ask the model for a 0-1 score alongside its
  * answer, so the WebStackPro hand-off logic ("human in the loop") can act on it.
  */
-async function callWebStackProAI({ businessName, message, history, knowledge }) {
-  const systemPrompt = buildSystemPrompt(businessName, knowledge);
+async function callWebStackProAI({ businessName, message, history, knowledge, businessHours }) {
+  const systemPrompt = buildSystemPrompt(businessName, knowledge, businessHours);
 
   const messages = [
     { role: 'system', content: systemPrompt },
@@ -96,6 +109,19 @@ async function handleIncomingMessage({ conversation, message, business }) {
     take: 10,
   });
 
+  // 4) Pull the business' widget config for business-hours awareness.
+  let businessHours = null;
+  try {
+    const webChannel = await prisma.webStackProChannel.findUnique({
+      where: { businessId_type: { businessId: business.id, type: 'web' } },
+      select: { config: true },
+    });
+    const cfg = webChannel?.config || {};
+    if (cfg.businessHours?.enabled) businessHours = cfg.businessHours;
+  } catch (_) {
+    /* best-effort */
+  }
+
   let result;
   try {
     result = await callWebStackProAI({
@@ -103,6 +129,7 @@ async function handleIncomingMessage({ conversation, message, business }) {
       message,
       history,
       knowledge,
+      businessHours,
     });
   } catch (err) {
     console.error('WebStackPro AI error:', err.message);

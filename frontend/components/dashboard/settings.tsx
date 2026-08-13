@@ -16,14 +16,26 @@ import {
   MessageSquare,
   Globe,
   LoaderCircle,
+  Palette,
+  MessageSquareQuote,
+  FlaskConical,
+  Tag as TagIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { webstackpro } from "@/lib/api";
 import { naira } from "@/lib/utils";
-import { WebStackProBusiness, ChannelRecord, WebStackProAgent } from "@/lib/types";
+import {
+  WebStackProBusiness,
+  ChannelRecord,
+  WebStackProAgent,
+  WidgetConfig,
+  CannedReply,
+  WebStackProTag,
+} from "@/lib/types";
 
 const CHANNEL_ICONS: Record<string, ComponentType<{ className?: string }>> = {
   whatsapp: MessageCircle,
@@ -62,6 +74,36 @@ export function WebStackProSettings() {
   const [billing, setBilling] = useState<BillingStatus | null>(null);
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
 
+  // widget config
+  const [widget, setWidget] = useState<WidgetConfig | null>(null);
+  const [widgetName, setWidgetName] = useState("");
+  const [widgetGreeting, setWidgetGreeting] = useState("");
+  const [widgetPrimary, setWidgetPrimary] = useState("#0A1F44");
+  const [widgetAccent, setWidgetAccent] = useState("#00D4FF");
+  const [widgetShowPowered, setWidgetShowPowered] = useState(true);
+  const [widgetCollectLead, setWidgetCollectLead] = useState(true);
+  const [hoursEnabled, setHoursEnabled] = useState(false);
+  const [hoursDays, setHoursDays] = useState("Mon, Tue, Wed, Thu, Fri");
+  const [hoursOpen, setHoursOpen] = useState("09:00");
+  const [hoursClose, setHoursClose] = useState("17:00");
+  const [hoursTimezone, setHoursTimezone] = useState("Africa/Lagos");
+  const [hoursAway, setHoursAway] = useState("");
+
+  // canned responses
+  const [canned, setCanned] = useState<CannedReply[]>([]);
+  const [cannedTitle, setCannedTitle] = useState("");
+  const [cannedBody, setCannedBody] = useState("");
+
+  // tags
+  const [tags, setTags] = useState<WebStackProTag[]>([]);
+  const [tagName, setTagName] = useState("");
+  const [tagColor, setTagColor] = useState("#00D4FF");
+
+  // test simulator
+  const [testText, setTestText] = useState("");
+  const [testBusy, setTestBusy] = useState(false);
+  const [testResult, setTestResult] = useState("");
+
   // form states
   const [bizName, setBizName] = useState("");
   const [agentName, setAgentName] = useState("");
@@ -96,11 +138,14 @@ export function WebStackProSettings() {
     }
 
     try {
-      const [ch, team, bill, an] = await Promise.all([
+      const [ch, team, bill, an, wg, cn, tg] = await Promise.all([
         webstackpro.get<{ channels: ChannelRecord[]; embedScript: string }>("/settings/channels"),
         webstackpro.get<{ agents: WebStackProAgent[] }>("/settings/team"),
         webstackpro.get<BillingStatus>("/billing/status"),
         webstackpro.get<Analytics>("/settings/analytics"),
+        webstackpro.get<{ config: WidgetConfig }>("/settings/widget"),
+        webstackpro.get<{ canned: CannedReply[] }>("/settings/canned"),
+        webstackpro.get<{ tags: WebStackProTag[] }>("/settings/tags"),
       ]);
       setChannels(ch.channels);
       setEmbedScript(ch.embedScript);
@@ -108,6 +153,22 @@ export function WebStackProSettings() {
       setBilling(bill);
       setAnalytics(an);
       setPlans(bill.plans || {});
+      const w = wg.config;
+      setWidget(w);
+      setWidgetName(w.name);
+      setWidgetGreeting(w.greeting);
+      setWidgetPrimary(w.primaryColor);
+      setWidgetAccent(w.accentColor);
+      setWidgetShowPowered(w.showPoweredBy);
+      setWidgetCollectLead(w.collectLead);
+      setHoursEnabled(w.businessHours.enabled);
+      setHoursDays(w.businessHours.days.join(", "));
+      setHoursOpen(w.businessHours.open);
+      setHoursClose(w.businessHours.close);
+      setHoursTimezone(w.businessHours.timezone);
+      setHoursAway(w.businessHours.awayMessage || "");
+      setCanned(cn.canned);
+      setTags(tg.tags);
     } catch (_) {
       // Some endpoints may be unavailable without the backend; dashboard still renders.
     }
@@ -214,6 +275,103 @@ export function WebStackProSettings() {
       toastify(`${label} copied!`);
     } catch (_) {
       toastify("Could not copy — select the text manually.");
+    }
+  }
+
+  async function saveWidget() {
+    try {
+      const body: Partial<WidgetConfig> & { businessHours?: unknown } = {
+        name: widgetName,
+        greeting: widgetGreeting,
+        primaryColor: widgetPrimary,
+        accentColor: widgetAccent,
+        showPoweredBy: widgetShowPowered,
+        collectLead: widgetCollectLead,
+        businessHours: {
+          enabled: hoursEnabled,
+          days: hoursDays
+            .split(",")
+            .map((d) => d.trim())
+            .filter(Boolean),
+          open: hoursOpen,
+          close: hoursClose,
+          timezone: hoursTimezone,
+          awayMessage: hoursAway,
+        },
+      };
+      const res = await webstackpro.patch<{ config: WidgetConfig }>("/settings/widget", body);
+      setWidget(res.config);
+      toastify("WebStackPro widget updated.");
+    } catch (err) {
+      toastify(err instanceof Error ? err.message : "WebStackPro widget update failed");
+    }
+  }
+
+  async function addCanned(e: FormEvent) {
+    e.preventDefault();
+    if (!cannedTitle.trim() || !cannedBody.trim()) return;
+    try {
+      await webstackpro.post("/settings/canned", { title: cannedTitle, body: cannedBody });
+      setCannedTitle("");
+      setCannedBody("");
+      toastify("WebStackPro canned reply added.");
+      await loadAll();
+    } catch (err) {
+      toastify(err instanceof Error ? err.message : "WebStackPro canned reply failed");
+    }
+  }
+
+  async function removeCanned(id: string) {
+    try {
+      await webstackpro.del(`/settings/canned/${id}`);
+      toastify("WebStackPro canned reply removed.");
+      await loadAll();
+    } catch (err) {
+      toastify(err instanceof Error ? err.message : "WebStackPro remove failed");
+    }
+  }
+
+  async function addTag(e: FormEvent) {
+    e.preventDefault();
+    if (!tagName.trim()) return;
+    try {
+      await webstackpro.post("/settings/tags", { name: tagName, color: tagColor });
+      setTagName("");
+      toastify("WebStackPro tag added.");
+      await loadAll();
+    } catch (err) {
+      toastify(err instanceof Error ? err.message : "WebStackPro tag failed");
+    }
+  }
+
+  async function removeTag(id: string) {
+    try {
+      await webstackpro.del(`/settings/tags/${id}`);
+      toastify("WebStackPro tag removed.");
+      await loadAll();
+    } catch (err) {
+      toastify(err instanceof Error ? err.message : "WebStackPro remove failed");
+    }
+  }
+
+  async function sendTestMessage(e: FormEvent) {
+    e.preventDefault();
+    if (!testText.trim() || testBusy) return;
+    setTestBusy(true);
+    setTestResult("");
+    try {
+      const res = await webstackpro.post<{ conversationId: string }>("/settings/test-message", { text: testText });
+      setTestResult("Test message sent! It appears in your Inbox — the WebStackPro AI will reply within seconds.");
+      setTestText("");
+      try {
+        localStorage.setItem("webstackpro_active_conversation", res.conversationId);
+      } catch (_) {
+        /* ignore */
+      }
+    } catch (err) {
+      setTestResult(err instanceof Error ? err.message : "WebStackPro test message failed");
+    } finally {
+      setTestBusy(false);
     }
   }
 
@@ -381,6 +539,265 @@ export function WebStackProSettings() {
                 </Button>
               </div>
             )}
+          </CardContent>
+        </Card>
+
+        {/* ============ WIDGET CUSTOMIZATION ============ */}
+        <Card id="widget" className="bg-white">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-navy">
+              <Palette className="h-5 w-5 text-cyan-dark" /> WebStackPro Website Widget
+            </CardTitle>
+            <CardDescription>
+              Brand the chat widget on your site: name, greeting, colors, lead capture and business hours.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-navy">Widget name</label>
+                <Input value={widgetName} onChange={(e) => setWidgetName(e.target.value)} placeholder="Chat with us" className="mt-1" />
+              </div>
+              <div className="flex items-end gap-3">
+                <div className="flex-1">
+                  <label className="mb-1 block text-xs font-semibold text-navy">Primary color</label>
+                  <div className="mt-1 flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={widgetPrimary}
+                      onChange={(e) => setWidgetPrimary(e.target.value)}
+                      className="h-9 w-12 cursor-pointer rounded-md border border-border"
+                    />
+                    <Input value={widgetPrimary} onChange={(e) => setWidgetPrimary(e.target.value)} className="h-9" />
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <label className="mb-1 block text-xs font-semibold text-navy">Accent color</label>
+                  <div className="mt-1 flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={widgetAccent}
+                      onChange={(e) => setWidgetAccent(e.target.value)}
+                      className="h-9 w-12 cursor-pointer rounded-md border border-border"
+                    />
+                    <Input value={widgetAccent} onChange={(e) => setWidgetAccent(e.target.value)} className="h-9" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-navy">Greeting message</label>
+              <Textarea
+                value={widgetGreeting}
+                onChange={(e) => setWidgetGreeting(e.target.value)}
+                placeholder="Hi there! How can we help you today?"
+                className="mt-1 min-h-[60px] text-sm"
+              />
+            </div>
+
+            <div className="flex flex-wrap gap-5">
+              <label className="flex cursor-pointer items-center gap-2 text-sm text-navy">
+                <input
+                  type="checkbox"
+                  checked={widgetCollectLead}
+                  onChange={(e) => setWidgetCollectLead(e.target.checked)}
+                  className="h-4 w-4 accent-cyan"
+                />
+                Ask visitors for their name + email before chatting
+              </label>
+              <label className="flex cursor-pointer items-center gap-2 text-sm text-navy">
+                <input
+                  type="checkbox"
+                  checked={widgetShowPowered}
+                  onChange={(e) => setWidgetShowPowered(e.target.checked)}
+                  className="h-4 w-4 accent-cyan"
+                />
+                Show {`"Powered by WebStackPro"`}
+              </label>
+            </div>
+
+            <div className="rounded-xl border border-border bg-muted/30 p-4">
+              <p className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                Business hours (AI + widget away message)
+              </p>
+              <label className="mb-3 flex cursor-pointer items-center gap-2 text-sm text-navy">
+                <input
+                  type="checkbox"
+                  checked={hoursEnabled}
+                  onChange={(e) => setHoursEnabled(e.target.checked)}
+                  className="h-4 w-4 accent-cyan"
+                />
+                Enable business hours
+              </label>
+              {hoursEnabled && (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold text-navy">Open days (comma separated)</label>
+                    <Input value={hoursDays} onChange={(e) => setHoursDays(e.target.value)} placeholder="Mon, Tue, Wed, Thu, Fri" className="mt-1" />
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className="mb-1 block text-xs font-semibold text-navy">Opens</label>
+                      <Input type="time" value={hoursOpen} onChange={(e) => setHoursOpen(e.target.value)} className="mt-1" />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-semibold text-navy">Closes</label>
+                      <Input type="time" value={hoursClose} onChange={(e) => setHoursClose(e.target.value)} className="mt-1" />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-semibold text-navy">Timezone</label>
+                      <Input value={hoursTimezone} onChange={(e) => setHoursTimezone(e.target.value)} className="mt-1" />
+                    </div>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="mb-1 block text-xs font-semibold text-navy">Away message</label>
+                    <Input
+                      value={hoursAway}
+                      onChange={(e) => setHoursAway(e.target.value)}
+                      placeholder="We're currently away, but we'll get back to you soon."
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <Button variant="navy" onClick={saveWidget}>
+              <Check className="h-4 w-4" /> Save WebStackPro Widget Settings
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* ============ TEST SIMULATOR ============ */}
+        <Card id="test" className="bg-white">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-navy">
+              <FlaskConical className="h-5 w-5 text-cyan-dark" /> WebStackPro Test Simulator
+            </CardTitle>
+            <CardDescription>
+              Send a test message as a customer to verify the full pipeline (inbox → AI → reply) works end-to-end.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={sendTestMessage} className="flex flex-col gap-3">
+              <Input
+                value={testText}
+                onChange={(e) => setTestText(e.target.value)}
+                placeholder='e.g. "What are your delivery options?" or "How do I contact you?"'
+                className="flex-1"
+              />
+              <div className="flex items-center gap-3">
+                <Button type="submit" variant="cyan" disabled={testBusy || !testText.trim()}>
+                  {testBusy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <FlaskConical className="h-4 w-4" />}
+                  Send WebStackPro test message
+                </Button>
+                {testResult && <p className="text-xs font-medium text-green-600">{testResult}</p>}
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+
+        {/* ============ CANNED RESPONSES ============ */}
+        <Card id="canned" className="bg-white">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-navy">
+              <MessageSquareQuote className="h-5 w-5 text-cyan-dark" /> WebStackPro Canned Responses
+            </CardTitle>
+            <CardDescription>Saved quick replies your human agents can reuse to answer faster.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={addCanned} className="mb-4 flex flex-col gap-3 sm:flex-row">
+              <Input
+                value={cannedTitle}
+                onChange={(e) => setCannedTitle(e.target.value)}
+                placeholder="Title (e.g. Delivery info)"
+                className="sm:w-1/3"
+              />
+              <Input
+                value={cannedBody}
+                onChange={(e) => setCannedBody(e.target.value)}
+                placeholder="The saved reply text..."
+                className="flex-1"
+              />
+              <Button type="submit" variant="navy" disabled={!cannedTitle.trim() || !cannedBody.trim()}>
+                <Plus className="h-4 w-4" /> Add Reply
+              </Button>
+            </form>
+
+            <div className="space-y-2">
+              {canned.map((c) => (
+                <div key={c.id} className="flex items-start gap-3 rounded-xl border border-border p-3">
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-navy">{c.title}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">{c.body}</p>
+                  </div>
+                  <button
+                    onClick={() => removeCanned(c.id)}
+                    className="rounded-lg p-2 text-muted-foreground transition hover:bg-red-50 hover:text-red-600"
+                    aria-label="Remove canned reply"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+              {canned.length === 0 && (
+                <p className="text-sm text-muted-foreground">No WebStackPro canned responses yet.</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* ============ TAGS ============ */}
+        <Card id="tags" className="bg-white">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-navy">
+              <TagIcon className="h-5 w-5 text-cyan-dark" /> WebStackPro Tags
+            </CardTitle>
+            <CardDescription>Labels you can attach to contacts from the Inbox to organise follow-ups (VIP, Lead, Awaiting Reply…).</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={addTag} className="mb-4 flex items-end gap-3">
+              <div className="flex-1">
+                <Input
+                  value={tagName}
+                  onChange={(e) => setTagName(e.target.value)}
+                  placeholder="New tag name (e.g. VIP)"
+                />
+              </div>
+              <div>
+                <input
+                  type="color"
+                  value={tagColor}
+                  onChange={(e) => setTagColor(e.target.value)}
+                  className="h-9 w-12 cursor-pointer rounded-md border border-border"
+                  title="Tag color"
+                />
+              </div>
+              <Button type="submit" variant="navy" disabled={!tagName.trim()}>
+                <Plus className="h-4 w-4" /> Add Tag
+              </Button>
+            </form>
+
+            <div className="flex flex-wrap gap-2">
+              {tags.map((t) => (
+                <span
+                  key={t.id}
+                  className="group inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-white"
+                  style={{ backgroundColor: t.color || "#00D4FF" }}
+                >
+                  <TagIcon className="h-3 w-3" /> {t.name}
+                  <button
+                    onClick={() => removeTag(t.id)}
+                    className="rounded-full p-0.5 text-white/70 transition hover:bg-white/20 hover:text-white"
+                    aria-label={`Delete ${t.name} tag`}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                </span>
+              ))}
+              {tags.length === 0 && <p className="text-sm text-muted-foreground">No WebStackPro tags yet.</p>}
+            </div>
           </CardContent>
         </Card>
 

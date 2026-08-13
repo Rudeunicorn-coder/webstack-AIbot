@@ -9,10 +9,11 @@ import { WebStackProConversation, InboxFilter } from "@/lib/types";
 import { useWebStackPro } from "@/lib/store";
 
 const FILTERS: { key: InboxFilter; label: string }[] = [
-  { key: "all", label: "All" },
+  { key: "open", label: "Open" },
   { key: "unread", label: "Unread" },
   { key: "ai", label: "AI" },
   { key: "human", label: "Human" },
+  { key: "resolved", label: "Resolved" },
   { key: "whatsapp", label: "WhatsApp" },
   { key: "instagram", label: "IG" },
   { key: "messenger", label: "Messenger" },
@@ -82,6 +83,7 @@ export function WebStackProConversationList({
   const setActive = useWebStackPro((s) => s.setActive);
   const search = useWebStackPro((s) => s.search);
   const setSearch = useWebStackPro((s) => s.setSearch);
+  const filter = useWebStackPro((s) => s.filter);
 
   const filtered = conversations.filter((c) => {
     const name = (c.contact?.name || "Customer").toLowerCase();
@@ -113,10 +115,30 @@ export function WebStackProConversationList({
         )}
 
         {!loading && filtered.length === 0 && (
-          <div className="mt-10 flex flex-col items-center text-center text-muted-foreground">
-            <MessageSquare className="mb-2 h-8 w-8 text-cyan/60" />
-            <p className="text-sm font-medium">No WebStackPro conversations yet</p>
-            <p className="mt-1 text-xs">Incoming WhatsApp, Instagram, Messenger and web chats land here.</p>
+          <div className="mt-8 flex flex-col items-center px-4 text-center">
+            <MessageSquare className="mb-3 h-10 w-10 text-cyan/60" />
+            <p className="text-sm font-bold text-navy">
+              {filter === "resolved" ? "No resolved conversations" : "Your inbox is ready"}
+            </p>
+            <p className="mt-1 max-w-[240px] text-xs text-muted-foreground">
+              {filter === "resolved"
+                ? "Conversations you resolve will be archived here."
+                : "Incoming WhatsApp, Instagram, Messenger and web chats land here. Get started in 2 steps:"}
+            </p>
+            {filter !== "resolved" && (
+              <div className="mt-4 w-full space-y-2 text-left">
+                {[
+                  { title: "1. Put the chat widget on your site", body: "Settings → Channels → copy the embed code." },
+                  { title: "2. Connect WhatsApp / IG / Messenger", body: "Settings → Channels → paste your Meta tokens." },
+                  { title: "3. Try the test simulator", body: "Settings → Test message to watch the AI reply live." },
+                ].map((step) => (
+                  <div key={step.title} className="rounded-xl border border-border bg-white p-3">
+                    <p className="text-xs font-bold text-navy">{step.title}</p>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">{step.body}</p>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -170,7 +192,11 @@ export function WebStackProConversationList({
                   </div>
 
                   <div className="mt-1.5 flex items-center gap-1.5">
-                    {c.status === "ai" ? (
+                    {c.status === "resolved" ? (
+                      <Badge variant="muted" className="text-[9px]">
+                        RESOLVED
+                      </Badge>
+                    ) : c.status === "ai" ? (
                       <Badge variant="ai" className="text-[9px]">
                         WEBSTACKPRO AI
                       </Badge>

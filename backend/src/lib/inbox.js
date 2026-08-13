@@ -23,7 +23,7 @@ const SENDERS = {
  * - saves the WebStackProMessage row
  * - enqueues the AI/handoff work on BullMQ
  */
-async function ingestMessage({ businessId, channel, externalId, name, text }) {
+async function ingestMessage({ businessId, channel, externalId, name, email, text }) {
   if (!businessId || !text) {
     throw new Error('WebStackPro ingest requires businessId and text');
   }
@@ -34,8 +34,22 @@ async function ingestMessage({ businessId, channel, externalId, name, text }) {
   });
   if (!contact) {
     contact = await prisma.webStackProContact.create({
-      data: { businessId, channel, externalId: String(externalId), name: name || 'Customer' },
+      data: {
+        businessId,
+        channel,
+        externalId: String(externalId),
+        name: name || 'Customer',
+        email: email || null,
+      },
     });
+  } else {
+    // Lead capture: keep the contact name/email in sync as the visitor provides them.
+    const patch = {};
+    if (name && name !== 'Website Visitor' && name !== 'Customer' && name !== contact.name) patch.name = name;
+    if (email && email !== contact.email) patch.email = email;
+    if (Object.keys(patch).length) {
+      contact = await prisma.webStackProContact.update({ where: { id: contact.id }, data: patch });
+    }
   }
 
   // WebStackPro Conversation keyed by business+channel+contact
@@ -65,11 +79,20 @@ async function ingestMessage({ businessId, channel, externalId, name, text }) {
     },
   });
 
-  // Mark conversation unread + bump lastMessageAt
-  await prisma.webStackProConversation.update({
-    where: { id: conversation.id },
-    data: { unread: true, lastMessageAt: new Date() },
-  });
+  // Mark conversation unread + bump lastMessageAt.
+  // A customer reply to a resolved chat reopens it for the AI/agents.
+  const reopen = conversation.status === 'resolved';
+  if (reopen) {
+    conversation = await prisma.webStackProConversation.update({
+      where: { id: conversation.id },
+      data: { status: 'ai', unread: true, lastMessageAt: new Date() },
+    });
+  } else {
+    await prisma.webStackProConversation.update({
+      where: { id: conversation.id },
+      data: { unread: true, lastMessageAt: new Date() },
+    });
+  }
 
   // Real-time toast for dashboard: "New message on WebStackPro"
   emitNewMessage(businessId, {

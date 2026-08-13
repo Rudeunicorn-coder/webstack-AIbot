@@ -32,6 +32,7 @@ model WebStackProBusiness {
   subscriptions WebStackProSubscription[]
   notes         WebStackProNote[]
   tags          WebStackProTag[]
+  canned        WebStackProCannedReply[]
 
   @@index([ownerId])
 }
@@ -204,5 +205,21 @@ model WebStackProTag {
   contacts WebStackProContact[] @relation("ContactTags")
 
   @@unique([businessId, name])
+  @@index([businessId])
+}
+
+// =============================
+// WebStackPro CANNED RESPONSES (saved quick replies for human agents)
+// =============================
+model WebStackProCannedReply {
+  id         String   @id @default(cuid())
+  businessId String
+  title      String
+  body       String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  business WebStackProBusiness @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
   @@index([businessId])
 }

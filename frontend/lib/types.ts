@@ -38,7 +38,7 @@ export interface WebStackProConversation {
   businessId: string;
   contactId?: string;
   channel: string;
-  status: "ai" | "human";
+  status: "ai" | "human" | "resolved";
   assignedTo?: string | null;
   unread: boolean;
   lastMessageAt: string;
@@ -72,4 +72,40 @@ export interface ChannelRecord {
   webhookUrl?: string | null;
 }
 
-export type InboxFilter = "all" | "unread" | "ai" | "human" | "whatsapp" | "instagram" | "messenger" | "web";
+export interface BusinessHours {
+  enabled: boolean;
+  days: string[];
+  open: string;
+  close: string;
+  timezone: string;
+  awayMessage: string;
+}
+
+export interface WidgetConfig {
+  name: string;
+  greeting: string;
+  primaryColor: string;
+  accentColor: string;
+  showPoweredBy: boolean;
+  collectLead: boolean;
+  businessHours: BusinessHours;
+}
+
+export interface CannedReply {
+  id: string;
+  title: string;
+  body: string;
+  createdAt: string;
+}
+
+export type InboxFilter =
+  | "all"
+  | "open"
+  | "resolved"
+  | "unread"
+  | "ai"
+  | "human"
+  | "whatsapp"
+  | "instagram"
+  | "messenger"
+  | "web";

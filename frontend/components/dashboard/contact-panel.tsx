@@ -1,7 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import { UserRound, Phone, Mail, Tag, StickyNote, Users, Zap, Check } from "lucide-react";
+import {
+  UserRound,
+  Phone,
+  Mail,
+  Tag,
+  StickyNote,
+  Users,
+  Zap,
+  Check,
+  Pencil,
+  X,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -13,12 +26,13 @@ import {
   WebStackProConversation,
   WebStackProAgent,
   WebStackProTag,
+  WebStackProContact,
 } from "@/lib/types";
 import { useWebStackPro } from "@/lib/store";
 
 /**
  * WebStackPro Right Rail
- * Contact details, tags, notes, assign agent + "Take Over for WebStackPro".
+ * Contact details (editable), tags, notes, assign agent + "Take Over for WebStackPro".
  */
 export function WebStackProContactPanel({
   conversation,
@@ -32,6 +46,12 @@ export function WebStackProContactPanel({
   const [note, setNote] = useState("");
   const [savingNote, setSavingNote] = useState(false);
   const [toast, setToast] = useState("");
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [newTagName, setNewTagName] = useState("");
+  const [showTagCreate, setShowTagCreate] = useState(false);
   const upsertConversation = useWebStackPro((s) => s.upsertConversation);
 
   const contact = conversation.contact;
@@ -40,6 +60,10 @@ export function WebStackProContactPanel({
   function flash(msg: string) {
     setToast(msg);
     setTimeout(() => setToast(""), 2500);
+  }
+
+  function updateContact(c: WebStackProContact) {
+    upsertConversation({ ...conversation, contact: c });
   }
 
   async function takeOver() {
@@ -79,6 +103,71 @@ export function WebStackProContactPanel({
     }
   }
 
+  function startEdit() {
+    if (!contact) return;
+    setName(contact.name || "");
+    setPhone(contact.phone || "");
+    setEmail(contact.email || "");
+    setEditing(true);
+  }
+
+  async function saveContact() {
+    if (!contact) return;
+    try {
+      const res = await webstackpro.patch<{ contact: WebStackProContact }>(
+        `/contacts/${contact.id}`,
+        { name, phone, email }
+      );
+      updateContact(res.contact);
+      setEditing(false);
+      flash("WebStackPro contact updated");
+    } catch (e) {
+      flash(e instanceof Error ? e.message : "WebStackPro update failed");
+    }
+  }
+
+  async function assignTag(tagId: string) {
+    if (!contact) return;
+    if (contact.tags?.some((t) => t.id === tagId)) return;
+    try {
+      const res = await webstackpro.post<{ contact: WebStackProContact }>(
+        `/contacts/${contact.id}/tags`,
+        { tagId }
+      );
+      updateContact(res.contact);
+      flash("WebStackPro tag added");
+    } catch (e) {
+      flash(e instanceof Error ? e.message : "WebStackPro tag failed");
+    }
+  }
+
+  async function removeTag(tagId: string) {
+    if (!contact) return;
+    try {
+      const res = await webstackpro.del<{ contact: WebStackProContact }>(
+        `/contacts/${contact.id}/tags/${tagId}`
+      );
+      updateContact(res.contact);
+      flash("WebStackPro tag removed");
+    } catch (e) {
+      flash(e instanceof Error ? e.message : "WebStackPro tag failed");
+    }
+  }
+
+  async function createTag() {
+    const name = newTagName.trim();
+    if (!name) return;
+    try {
+      const res = await webstackpro.post<{ tag: WebStackProTag }>("/settings/tags", { name });
+      await assignTag(res.tag.id);
+      setNewTagName("");
+      setShowTagCreate(false);
+      flash(`WebStackPro tag "${name}" created`);
+    } catch (e) {
+      flash(e instanceof Error ? e.message : "WebStackPro tag failed");
+    }
+  }
+
   return (
     <div className="hidden h-full w-80 shrink-0 flex-col border-l border-border bg-white xl:flex">
       <div className="flex-1 overflow-y-auto">
@@ -86,33 +175,53 @@ export function WebStackProContactPanel({
         <div className="border-b border-border p-4">
           <div className="flex items-center gap-3">
             <Avatar name={contact?.name || "Customer"} className="h-12 w-12" />
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="truncate font-bold text-navy">{contact?.name || "Customer"}</p>
               <p className="text-xs text-muted-foreground">Customer on {meta.label}</p>
             </div>
-            <span
-              className="ml-auto h-6 w-6 shrink-0 rounded-full"
-              style={{ backgroundColor: meta.color }}
-              title={meta.label}
-            />
+            {!editing && (
+              <button
+                onClick={startEdit}
+                className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-muted hover:text-navy"
+                aria-label="Edit contact"
+              >
+                <Pencil className="h-4 w-4" />
+              </button>
+            )}
           </div>
 
-          <div className="mt-4 space-y-2 text-sm text-muted-foreground">
-            {contact?.phone && (
+          {editing ? (
+            <div className="mt-4 space-y-2">
+              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" className="h-9 text-sm" />
+              <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone" className="h-9 text-sm" />
+              <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" type="email" className="h-9 text-sm" />
+              <div className="flex gap-2">
+                <Button size="sm" variant="navy" className="flex-1" onClick={saveContact}>
+                  <Check className="h-4 w-4" /> Save
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setEditing(false)}>
+                  <X className="h-4 w-4" /> Cancel
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-4 space-y-2 text-sm text-muted-foreground">
+              {contact?.phone && (
+                <p className="flex items-center gap-2">
+                  <Phone className="h-3.5 w-3.5 text-cyan-dark" /> {contact.phone}
+                </p>
+              )}
+              {contact?.email && (
+                <p className="flex items-center gap-2">
+                  <Mail className="h-3.5 w-3.5 text-cyan-dark" /> {contact.email}
+                </p>
+              )}
               <p className="flex items-center gap-2">
-                <Phone className="h-3.5 w-3.5 text-cyan-dark" /> {contact.phone}
+                <UserRound className="h-3.5 w-3.5 text-cyan-dark" />
+                Customer ID: {contact?.id?.slice(0, 8) || "—"}
               </p>
-            )}
-            {contact?.email && (
-              <p className="flex items-center gap-2">
-                <Mail className="h-3.5 w-3.5 text-cyan-dark" /> {contact.email}
-              </p>
-            )}
-            <p className="flex items-center gap-2">
-              <UserRound className="h-3.5 w-3.5 text-cyan-dark" />
-              Customer ID: {contact?.id?.slice(0, 8) || "—"}
-            </p>
-          </div>
+            </div>
+          )}
         </div>
 
         {/* Status + Take Over */}
@@ -121,7 +230,9 @@ export function WebStackProContactPanel({
             WebStackPro Agent Status
           </p>
           <div className="flex items-center gap-2">
-            {conversation.status === "ai" ? (
+            {conversation.status === "resolved" ? (
+              <Badge variant="muted">RESOLVED</Badge>
+            ) : conversation.status === "ai" ? (
               <Badge variant="ai">WEBSTACKPRO AI IS ACTIVE</Badge>
             ) : (
               <Badge variant="human">HUMAN: {conversation.assignedTo || "AGENT"}</Badge>
@@ -131,7 +242,7 @@ export function WebStackProContactPanel({
             variant="cyan"
             className="w-full"
             onClick={takeOver}
-            disabled={conversation.status === "human"}
+            disabled={conversation.status === "human" || conversation.status === "resolved"}
           >
             <Zap className="h-4 w-4" />
             {conversation.status === "human" ? "Taken Over for WebStackPro" : "Take Over for WebStackPro"}
@@ -172,23 +283,76 @@ export function WebStackProContactPanel({
 
         {/* Tags */}
         <div className="border-b border-border p-4">
-          <p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">
-            Tags
-          </p>
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Tags</p>
+            <button
+              onClick={() => setShowTagCreate((v) => !v)}
+              className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-[10px] font-semibold text-muted-foreground transition hover:border-cyan/60 hover:text-navy"
+            >
+              <Plus className="h-3 w-3" /> New tag
+            </button>
+          </div>
+
           <div className="flex flex-wrap gap-1.5">
             {(contact?.tags?.length ? contact.tags : []).map((t: WebStackProTag) => (
               <span
                 key={t.id}
-                className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold text-white"
+                className="group inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold text-white"
                 style={{ backgroundColor: t.color || "#00D4FF" }}
               >
                 <Tag className="h-3 w-3" /> {t.name}
+                <button
+                  onClick={() => removeTag(t.id)}
+                  className="ml-0.5 rounded-full p-0.5 text-white/70 transition hover:bg-white/20 hover:text-white"
+                  aria-label={`Remove ${t.name} tag`}
+                >
+                  <X className="h-3 w-3" />
+                </button>
               </span>
             ))}
             {!contact?.tags?.length && (
               <span className="text-xs text-muted-foreground">No WebStackPro tags yet.</span>
             )}
           </div>
+
+          {showTagCreate && (
+            <div className="mt-2 flex gap-2">
+              <Input
+                value={newTagName}
+                onChange={(e) => setNewTagName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && createTag()}
+                placeholder="Tag name (e.g. VIP, Follow up)"
+                className="h-9 text-xs"
+              />
+              <Button size="sm" variant="cyan" onClick={createTag} disabled={!newTagName.trim()}>
+                Add
+              </Button>
+            </div>
+          )}
+
+          {tags.length > 0 && (
+            <div className="mt-2">
+              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Assign existing
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {tags
+                  .filter((t) => !contact?.tags?.some((ct) => ct.id === t.id))
+                  .map((t) => (
+                    <button
+                      key={t.id}
+                      onClick={() => assignTag(t.id)}
+                      className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-[11px] font-semibold text-muted-foreground transition hover:border-cyan/60 hover:text-navy"
+                    >
+                      <Tag className="h-3 w-3" style={{ color: t.color }} /> {t.name}
+                    </button>
+                  ))}
+                {tags.length > 0 && tags.every((t) => contact?.tags?.some((ct) => ct.id === t.id)) && (
+                  <span className="text-[11px] text-muted-foreground">All tags assigned.</span>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Notes */}

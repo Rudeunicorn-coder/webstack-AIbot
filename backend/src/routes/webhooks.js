@@ -80,7 +80,7 @@ router.post('/messenger', async (req, res) => {
 // ---------------------------------------------------------------------------
 router.post('/webwidget', async (req, res) => {
   try {
-    const { businessId, externalId, name, text } = req.body || {};
+    const { businessId, externalId, name, email, text } = req.body || {};
     if (!businessId || !text) {
       return res.status(400).json({ error: 'WebStackPro: businessId and text required' });
     }
@@ -89,6 +89,7 @@ router.post('/webwidget', async (req, res) => {
       channel: 'web',
       externalId: externalId || `web-${Date.now()}`,
       name: name || 'Website Visitor',
+      email: email || null,
       text,
     });
     res.json({ ok: true });
@@ -96,6 +97,44 @@ router.post('/webwidget', async (req, res) => {
     console.error('WebStackPro widget webhook error:', err.message);
     res.status(500).json({ error: 'WebStackPro: unable to save message' });
   }
+});
+
+// Public widget branding config — fetched by the embed script on page load.
+// No auth: the businessId is embedded in the customer-facing script tag.
+router.get('/webwidget/config', async (req, res) => {
+  const { businessId } = req.query;
+  if (!businessId) return res.status(400).json({ error: 'WebStackPro: businessId required' });
+
+  const business = await prisma.webStackProBusiness.findUnique({ where: { id: businessId } });
+  if (!business) return res.status(404).json({ error: 'WebStackPro: business not found' });
+
+  const channel = await prisma.webStackProChannel.findUnique({
+    where: { businessId_type: { businessId, type: 'web' } },
+  });
+
+  const cfg = channel?.config || {};
+  const hours = cfg.businessHours || {};
+  const defaultGreeting = `Hi there! 👋 Welcome to ${business.name}. How can we help you today?`;
+
+  res.json({
+    businessName: business.name,
+    config: {
+      name: typeof cfg.name === 'string' && cfg.name.trim() ? cfg.name : 'Chat with us',
+      greeting: typeof cfg.greeting === 'string' && cfg.greeting.trim() ? cfg.greeting : defaultGreeting,
+      primaryColor: cfg.primaryColor || '#0A1F44',
+      accentColor: cfg.accentColor || '#00D4FF',
+      showPoweredBy: cfg.showPoweredBy !== false,
+      collectLead: cfg.collectLead !== false,
+      businessHours: {
+        enabled: !!hours.enabled,
+        days: Array.isArray(hours.days) ? hours.days : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+        open: hours.open || '09:00',
+        close: hours.close || '17:00',
+        timezone: hours.timezone || 'Africa/Lagos',
+        awayMessage: hours.awayMessage || null,
+      },
+    },
+  });
 });
 
 // Widget polling: return all messages for a website thread so the widget can render replies.

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Send, Bot, User as UserIcon, Headphones, ArrowLeft } from "lucide-react";
+import { Send, Bot, User as UserIcon, Headphones, ArrowLeft, CircleCheck, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -70,8 +70,10 @@ export function WebStackProChatWindow({
 }) {
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
+  const [busy, setBusy] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const appendMessage = useWebStackPro((s) => s.appendMessage);
+  const upsertConversation = useWebStackPro((s) => s.upsertConversation);
   const setActive = useWebStackPro((s) => s.setActive);
 
   useEffect(() => {
@@ -124,6 +126,36 @@ export function WebStackProChatWindow({
     }
   }
 
+  async function handleResolve() {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const res = await webstackpro.post<{ conversation: WebStackProConversation }>(
+        `/conversations/${conversationId}/resolve`
+      );
+      upsertConversation(res.conversation);
+    } catch (_) {
+      /* best-effort */
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleReopen() {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const res = await webstackpro.post<{ conversation: WebStackProConversation }>(
+        `/conversations/${conversationId}/reopen`
+      );
+      upsertConversation(res.conversation);
+    } catch (_) {
+      /* best-effort */
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="flex h-full flex-1 flex-col bg-background">
       {/* Header */}
@@ -140,10 +172,21 @@ export function WebStackProChatWindow({
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {conversation.status === "ai" ? (
+          {conversation.status === "resolved" ? (
+            <Badge variant="muted">RESOLVED</Badge>
+          ) : conversation.status === "ai" ? (
             <Badge variant="ai">WEBSTACKPRO AI</Badge>
           ) : (
             <Badge variant="human">HUMAN: {conversation.assignedTo || "AGENT"}</Badge>
+          )}
+          {conversation.status === "resolved" ? (
+            <Button variant="outline" size="sm" disabled={busy} onClick={handleReopen}>
+              <RotateCcw className="h-3.5 w-3.5" /> Reopen
+            </Button>
+          ) : (
+            <Button variant="outline" size="sm" disabled={busy} onClick={handleResolve}>
+              <CircleCheck className="h-3.5 w-3.5" /> Resolve
+            </Button>
           )}
         </div>
       </header>
@@ -173,7 +216,9 @@ export function WebStackProChatWindow({
               }
             }}
             placeholder={
-              conversation.status === "ai"
+              conversation.status === "resolved"
+                ? "Reopened conversations can be replied to..."
+                : conversation.status === "ai"
                 ? "Reply as a human agent... (takes over from WebStackPro AI)"
                 : "Reply to customer..."
             }

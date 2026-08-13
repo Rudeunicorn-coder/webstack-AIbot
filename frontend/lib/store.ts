@@ -43,7 +43,7 @@ export const useWebStackPro = create<WebStackProStore>((set, get) => ({
   business: null,
   conversations: [],
   activeConversationId: null,
-  filter: "all",
+  filter: "open",
   search: "",
   socketToken: null,
   socketConnected: false,
