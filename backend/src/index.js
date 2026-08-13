@@ -65,6 +65,7 @@ app.use('/api', billingRouter);
 app.use((err, _req, res, _next) => {
   const status = err.status || 500;
   console.error('WebStackPro API error:', err.message);
+  if (status >= 500) console.error(err);
   res.status(status).json({
     error: status >= 500 ? 'WebStackPro internal error' : err.message || 'WebStackPro error',
   });

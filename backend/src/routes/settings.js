@@ -13,23 +13,28 @@ const { searchKnowledge } = require('../lib/pgvector');
 // POST /auth/exchange   Supabase Auth token -> WebStackPro JWT + business
 // Registered BEFORE authRequired so a new sign-in can obtain its JWT.
 // ---------------------------------------------------------------------------
-router.post('/auth/exchange', async (req, res) => {
-  const { ownerId, email, name } = req.body || {};
-  if (!ownerId) return res.status(400).json({ error: 'WebStackPro: ownerId required' });
+router.post('/auth/exchange', async (req, res, next) => {
+  try {
+    const { ownerId, email, name } = req.body || {};
+    if (!ownerId) return res.status(400).json({ error: 'WebStackPro: ownerId required' });
 
-  const business = await resolveBusiness(ownerId, { name: name || 'My WebStackPro Business' });
+    const business = await resolveBusiness(ownerId, { name: name || 'My WebStackPro Business' });
 
-  const token = signToken({ ownerId, businessId: business.id, name: name || 'Agent', email });
+    const token = signToken({ ownerId, businessId: business.id, name: name || 'Agent', email });
 
-  res.json({
-    token,
-    business: {
-      id: business.id,
-      name: business.name,
-      plan: business.plan,
-      planActive: business.planActive,
-    },
-  });
+    res.json({
+      token,
+      business: {
+        id: business.id,
+        name: business.name,
+        plan: business.plan,
+        planActive: business.planActive,
+      },
+    });
+  } catch (err) {
+    console.error('WebStackPro /auth/exchange error:', err);
+    next(err);
+  }
 });
 
 // All other /settings routes require a WebStackPro session.
