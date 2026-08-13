@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Script from "next/script";
 import {
   Bot,
   Inbox,
@@ -347,6 +348,14 @@ export default function LandingPage() {
           </p>
         </div>
       </footer>
+
+      <Script
+        src="https://webstack-a-ibot-frontend.vercel.app/webstackpro-widget.js"
+        data-api="https://webstackpro-api.onrender.com"
+        data-business="cmsqgpews000013u9e0dr852s"
+        strategy="afterInteractive"
+        async
+      />
     </main>
   );
 }
