@@ -91,15 +91,15 @@ router.get('/settings/channels', async (req, res) => {
     where: { businessId: req.business.id },
     orderBy: { type: 'asc' },
   });
-  const embedScript = `<script src="${process.env.FRONTEND_URL || 'http://localhost:3000'}/webstackpro-widget.js" data-business="${req.business.id}" async></script>`;
-
-  // Public webhook base for pasting into Meta / the widget.
   const base =
     process.env.API_PUBLIC_URL ||
     (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : null) ||
     process.env.FRONTEND_URL ||
     `http://localhost:${process.env.PORT || 4000}`;
   const webhookBase = base.replace(/\/+$/, '');
+  // The widget script lives on the frontend; the widget talks to the backend API.
+  const frontendBase = (process.env.FRONTEND_URL || `http://localhost:${process.env.PORT || 3000}`).replace(/\/+$/, '');
+  const embedScript = `<script src="${frontendBase}/webstackpro-widget.js" data-api="${webhookBase}" data-business="${req.business.id}" async></script>`;
 
   res.json({
     channels: channels.map((c) => ({
