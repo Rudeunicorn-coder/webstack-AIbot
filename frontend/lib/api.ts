@@ -3,7 +3,10 @@
  * Talks to the Express backend and attaches the WebStackPro JWT.
  */
 
-const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000").replace(/\/+$/, "");
+// In production we call the backend same-origin via the Next.js rewrite proxy
+// (see next.config.js -> rewrites), so API_URL can be left empty. In local dev,
+// set NEXT_PUBLIC_API_URL=http://localhost:4000 to talk to the backend directly.
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/+$/, "");
 
 function apiPath(path: string): string {
   const p = path.startsWith("/") ? path : `/${path}`;
