@@ -19,14 +19,15 @@ export function WebStackProNav() {
           <Link href="#plans" className="transition hover:text-cyan">Pricing</Link>
           <Link href="#faq" className="transition hover:text-cyan">FAQ</Link>
         </nav>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <Link href="/login">
-            <Button variant="ghost" className="text-white hover:text-cyan">
-              Login to WebStackPro
+            <Button variant="ghost" className="px-2 text-sm text-white hover:text-cyan sm:px-4">
+              <span className="sm:hidden">Login</span>
+              <span className="hidden sm:inline">Login to WebStackPro</span>
             </Button>
           </Link>
           <Link href="/login">
-            <Button variant="cyan">Start Free Trial</Button>
+            <Button variant="cyan" className="px-3 sm:px-4">Start Free Trial</Button>
           </Link>
         </div>
       </div>

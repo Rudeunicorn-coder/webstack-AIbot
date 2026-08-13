@@ -13,6 +13,24 @@ const whatsapp = require('../adapters/whatsapp');
 const instagram = require('../adapters/instagram');
 const messenger = require('../adapters/messenger');
 
+// Retry transient database-unreachable errors (Prisma P1001/P1017) so short
+// Supabase pooler stalls don't fail the widget poll/config calls. All other
+// errors (and validation failures) pass straight through untouched.
+const RETRYABLE_DB_CODES = new Set(['P1001', 'P1017']);
+async function withDbRetry(fn, attempts = 3, baseDelayMs = 400) {
+  let lastErr;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      if (!RETRYABLE_DB_CODES.has(err && err.code) || i === attempts - 1) throw err;
+      await new Promise((resolve) => setTimeout(resolve, baseDelayMs * (i + 1)));
+    }
+  }
+  throw lastErr;
+}
+
 // ---------------------------------------------------------------------------
 // Meta shared route: WhatsApp | Instagram | Messenger
 // GET = subscribe verification.  POST = inbound event.
@@ -102,15 +120,16 @@ router.post('/webwidget', async (req, res) => {
 // Public widget branding config — fetched by the embed script on page load.
 // No auth: the businessId is embedded in the customer-facing script tag.
 router.get('/webwidget/config', async (req, res) => {
-  const { businessId } = req.query;
-  if (!businessId) return res.status(400).json({ error: 'WebStackPro: businessId required' });
+  try {
+    const { businessId } = req.query;
+    if (!businessId) return res.status(400).json({ error: 'WebStackPro: businessId required' });
 
-  const business = await prisma.webStackProBusiness.findUnique({ where: { id: businessId } });
-  if (!business) return res.status(404).json({ error: 'WebStackPro: business not found' });
+    const business = await withDbRetry(() => prisma.webStackProBusiness.findUnique({ where: { id: businessId } }));
+    if (!business) return res.status(404).json({ error: 'WebStackPro: business not found' });
 
-  const channel = await prisma.webStackProChannel.findUnique({
+  const channel = await withDbRetry(() => prisma.webStackProChannel.findUnique({
     where: { businessId_type: { businessId, type: 'web' } },
-  });
+  }));
 
   const cfg = channel?.config || {};
   const hours = cfg.businessHours || {};
@@ -135,27 +154,36 @@ router.get('/webwidget/config', async (req, res) => {
       },
     },
   });
+  } catch (err) {
+    console.error('WebStackPro widget config error:', err.message);
+    res.status(500).json({ error: 'WebStackPro: unable to load widget config' });
+  }
 });
 
 // Widget polling: return all messages for a website thread so the widget can render replies.
 router.get('/webwidget/messages', async (req, res) => {
-  const { businessId, externalId } = req.query;
-  if (!businessId || !externalId) {
-    return res.status(400).json({ error: 'WebStackPro: businessId and externalId required' });
-  }
-  const threadKey = `${businessId}-web-${externalId}`;
-  const conversation = await prisma.webStackProConversation.findUnique({
-    where: { threadKey },
-    select: {
-      id: true,
-      status: true,
-      messages: {
-        orderBy: { createdAt: 'asc' },
-        select: { role: true, text: true, createdAt: true },
+  try {
+    const { businessId, externalId } = req.query;
+    if (!businessId || !externalId) {
+      return res.status(400).json({ error: 'WebStackPro: businessId and externalId required' });
+    }
+    const threadKey = `${businessId}-web-${externalId}`;
+    const conversation = await withDbRetry(() => prisma.webStackProConversation.findUnique({
+      where: { threadKey },
+      select: {
+        id: true,
+        status: true,
+        messages: {
+          orderBy: { createdAt: 'asc' },
+          select: { role: true, text: true, createdAt: true },
+        },
       },
-    },
-  });
-  res.json({ conversation });
+    }));
+    res.json({ conversation });
+  } catch (err) {
+    console.error('WebStackPro widget poll error:', err.message);
+    res.status(500).json({ error: 'WebStackPro: unable to load messages' });
+  }
 });
 
 // ---------------------------------------------------------------------------

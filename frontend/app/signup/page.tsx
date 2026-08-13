@@ -157,6 +157,18 @@ export default function SignupPage() {
                   "Start my free WebStackPro trial"
                 )}
               </Button>
+
+              <p className="text-center text-xs leading-5 text-muted-foreground">
+                By creating an account you agree to our{" "}
+                <Link href="/terms" className="font-semibold text-cyan-dark hover:underline">
+                  Terms of Service
+                </Link>{" "}
+                and{" "}
+                <Link href="/privacy" className="font-semibold text-cyan-dark hover:underline">
+                  Privacy Policy
+                </Link>
+                .
+              </p>
             </form>
 
             <p className="mt-6 text-center text-sm text-muted-foreground">

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="wsp-blue" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e40af"/>
+      <stop offset="100%" stop-color="#3b82f6"/>
+    </linearGradient>
+  </defs>
+  <rect x="6" y="6" width="52" height="52" rx="13" fill="url(#wsp-blue)"/>
+  <text x="32" y="43" text-anchor="middle" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-weight="bold" font-size="19">&lt;/&gt;</text>
+</svg>

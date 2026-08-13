@@ -149,6 +149,17 @@ export default function LoginPage() {
                 </div>
               </div>
 
+              <p className="text-center text-xs leading-5 text-muted-foreground">
+                By logging in you agree to our{" "}
+                <Link href="/terms" className="font-semibold text-cyan-dark hover:underline">
+                  Terms of Service
+                </Link>{" "}
+                and{" "}
+                <Link href="/privacy" className="font-semibold text-cyan-dark hover:underline">
+                  Privacy Policy
+                </Link>
+                .
+              </p>
               <Button type="submit" variant="navy" disabled={loading} className="w-full">
                 {loading ? (
                   <>

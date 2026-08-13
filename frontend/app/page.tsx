@@ -103,27 +103,27 @@ export default function LandingPage() {
           <div>
             <span className="inline-flex items-center gap-2 rounded-full border border-cyan/40 bg-cyan/10 px-3 py-1 text-xs font-medium text-cyan">
               <Sparkles className="h-3.5 w-3.5" />
-              WebStackPro AI Agent · Built for Owerri, Nigeria
+              WebStackPro AI Agent · Built for Nigerian businesses
             </span>
             <h1 className="font-display mt-6 text-4xl font-extrabold leading-tight tracking-tight md:text-5xl lg:text-6xl">
               WebStackPro — <span className="webstackpro-gradient">Never Miss A Customer Message Again</span>
             </h1>
             <p className="mt-6 max-w-xl text-lg text-white/80">
               WebStackPro installs a 24/7 AI Agent on your WhatsApp, Instagram, and
-              Website. Built for Owerri Businesses. One inbox, smart replies, human
+              Website. Built for Nigerian businesses. One inbox, smart replies, human
               hand-off when it matters.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-4">
-              <Link href="/login">
-                <Button size="lg" variant="cyan" className="text-base">
+              <Link href="/login" className="w-full sm:w-auto">
+                <Button size="lg" variant="cyan" className="h-auto min-h-12 w-full whitespace-normal px-5 py-3 text-base sm:w-auto sm:px-8">
                   Start Your Free WebStackPro Trial
                 </Button>
               </Link>
-              <Link href="#how">
+              <Link href="#how" className="w-full sm:w-auto">
                 <Button
                   size="lg"
                   variant="outline"
-                  className="border-white/30 bg-transparent text-white hover:bg-cyan/10 hover:text-white"
+                  className="h-auto min-h-12 w-full whitespace-normal border-white/30 bg-transparent px-5 py-3 text-base text-white hover:bg-cyan/10 hover:text-white sm:w-auto sm:px-8"
                 >
                   See how it works
                 </Button>
@@ -163,7 +163,7 @@ export default function LandingPage() {
                 </div>
                 <div className="ml-6 rounded-xl rounded-tl-sm bg-cyan p-3 text-navy shadow-sm">
                   <p className="text-sm font-medium">
-                    Good morning Adaeze! The Samsung goes for ₦820,000. We deliver in Owerri within 24-48 hours. Ready to order?
+                    Good morning Adaeze! The Samsung goes for ₦820,000. We deliver within 24-48 hours. Ready to order?
                   </p>
                   <p className="mt-1 text-right text-[10px] font-semibold text-navy/60">Powered by WebStackPro AI</p>
                 </div>
@@ -301,7 +301,7 @@ export default function LandingPage() {
         </div>
         <div className="mt-8 space-y-4">
           {[
-            ["How fast is WebStackPro delivery?", "WebStackPro AI replies instantly. Physical orders from WebStackPro customers get 24-48 hours delivery within Owerri."],
+            ["How fast is WebStackPro delivery?", "WebStackPro AI replies instantly. Physical orders from WebStackPro customers get 24-48 hours delivery."],
             ["How does WebStackPro billing work?", "WebStackPro Starter is ₦50,000/month, Pro is ₦120,000/month. Billed via Paystack. New customers get a free 14-day trial."],
             ["Which channels can I connect?", "WhatsApp, Instagram DM, Facebook Messenger and your website via the free WebStackPro widget."],
             ["When does the AI hand off to a human?", "When WebStackPro AI confidence drops below 0.8, the conversation moves to a human agent and your team is notified in real time."],
@@ -324,10 +324,10 @@ export default function LandingPage() {
             Automate. Convert. Grow. with WebStackPro.
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-white/70">
-            Join Owerri businesses answering every customer instantly. Start your free WebStackPro trial today.
+            Join Nigerian businesses answering every customer instantly. Start your free WebStackPro trial today.
           </p>
-          <Link href="/login" className="mt-6 inline-block">
-            <Button size="lg" variant="cyan" className="text-base">
+          <Link href="/login" className="mt-6 inline-block w-full px-6 sm:w-auto">
+            <Button size="lg" variant="cyan" className="h-auto min-h-12 w-full whitespace-normal px-5 py-3 text-base">
               Start Your Free WebStackPro Trial
             </Button>
           </Link>
@@ -343,15 +343,23 @@ export default function LandingPage() {
               WebStack<span className="text-cyan-dark">Pro</span>
             </span>
           </div>
+          <div className="flex items-center gap-5 text-sm">
+            <Link href="/terms" className="text-muted-foreground transition hover:text-navy">
+              Terms of Service
+            </Link>
+            <Link href="/privacy" className="text-muted-foreground transition hover:text-navy">
+              Privacy Policy
+            </Link>
+          </div>
           <p className="text-sm text-muted-foreground">
-            WebStackPro © 2026 | Owerri, Nigeria | A WebStackPro Product
+            WebStackPro © 2026 | Nigeria | A WebStackPro Product
           </p>
         </div>
       </footer>
 
       <Script
-        src="https://webstack-a-ibot-frontend.vercel.app/webstackpro-widget.js"
-        data-api="https://webstackpro-api.onrender.com"
+        src="/webstackpro-widget.js"
+        data-api={process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}
         data-business="cmsqgpews000013u9e0dr852s"
         strategy="afterInteractive"
         async

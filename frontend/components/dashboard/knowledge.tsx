@@ -151,12 +151,12 @@ export function WebStackProKnowledge() {
             <CardContent>
               <form onSubmit={createEntry} className="space-y-3">
                 <Input
-                  placeholder="Title — e.g. WebStackPro delivery time in Owerri"
+                  placeholder="Title — e.g. WebStackPro delivery time"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                 />
                 <Textarea
-                  placeholder="Content — e.g. Q: What is WebStackPro delivery time in Owerri? A: WebStackPro customers get 24-48 hours delivery within Owerri."
+                  placeholder="Content — e.g. Q: What is WebStackPro delivery time? A: WebStackPro customers get 24-48 hours delivery."
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
                   className="min-h-[120px]"
@@ -200,7 +200,7 @@ export function WebStackProKnowledge() {
           <CardContent>
             <form onSubmit={testAI} className="flex gap-2">
               <Input
-                placeholder="Try: What is your delivery time in Owerri?"
+                placeholder="Try: What is your delivery time?"
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
               />

@@ -19,8 +19,8 @@ export const metadata: Metadata = {
     template: "%s | WebStackPro",
   },
   description:
-    "WebStackPro installs a 24/7 AI Agent on your WhatsApp, Instagram and Website. Built for Owerri Businesses. Automate. Convert. Grow.",
-  keywords: ["WebStackPro", "AI Agent", "Unified Inbox", "WhatsApp", "Owerri", "Nigeria"],
+    "WebStackPro installs a 24/7 AI Agent on your WhatsApp, Instagram and Website. Built for Nigerian businesses. Automate. Convert. Grow.",
+  keywords: ["WebStackPro", "AI Agent", "Unified Inbox", "WhatsApp", "Nigeria"],
 };
 
 export default function RootLayout({

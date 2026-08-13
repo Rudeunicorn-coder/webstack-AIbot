@@ -9,8 +9,8 @@ export default function WidgetDemoPage() {
   return (
     <main className="relative min-h-screen bg-gradient-to-br from-navy via-[#0F2A5C] to-navy text-white">
       <Script
-        src="https://webstack-a-ibot-frontend.vercel.app/webstackpro-widget.js"
-        data-api="https://webstackpro-api.onrender.com"
+        src="/webstackpro-widget.js"
+        data-api={process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}
         data-business="cmsqgpews000013u9e0dr852s"
         strategy="afterInteractive"
         async

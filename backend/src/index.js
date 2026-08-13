@@ -34,9 +34,18 @@ const server = http.createServer(app);
 // Realtime for the WebStackPro dashboard
 initSocket(server, process.env.FRONTEND_URL || 'http://localhost:3000');
 
+// CORS: allow the configured frontend(s). FRONTEND_URL may be a comma-separated list.
+const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:3000')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
+
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin(origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+      return callback(null, false);
+    },
     credentials: true,
   })
 );
@@ -82,6 +91,17 @@ process.on('SIGTERM', async () => {
   if (inboxQueue) await inboxQueue.close();
   await prisma.$disconnect();
   server.close(() => process.exit(0));
+});
+
+// Keep the API alive on transient failures (e.g. a DB hiccup during a widget
+// poll). Without these listeners, Node >=15 crashes the whole process on an
+// unhandled rejection or exception.
+process.on('unhandledRejection', (reason) => {
+  console.error('WebStackPro unhandledRejection:', reason);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('WebStackPro uncaughtException:', err.message);
 });
 
 module.exports = { app, server, prisma };
