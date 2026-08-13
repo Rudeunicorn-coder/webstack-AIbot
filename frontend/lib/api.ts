@@ -3,10 +3,14 @@
  * Talks to the Express backend and attaches the WebStackPro JWT.
  */
 
-// In production we call the backend same-origin via the Next.js rewrite proxy
-// (see next.config.js -> rewrites), so API_URL can be left empty. In local dev,
-// set NEXT_PUBLIC_API_URL=http://localhost:4000 to talk to the backend directly.
-const API_URL = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/+$/, "");
+// We call the backend same-origin via the Next.js rewrite proxy
+// (see next.config.js -> rewrites). The proxy handles both local dev and prod.
+// A localhost / empty NEXT_PUBLIC_API_URL is treated as "use the proxy". Only a
+// real remote URL (e.g. the Railway backend) is used for a direct connection.
+const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || "";
+const API_URL = /localhost|127\.0\.0\.1/.test(rawApiUrl)
+  ? ""
+  : rawApiUrl.replace(/\/+$/, "");
 
 function apiPath(path: string): string {
   const p = path.startsWith("/") ? path : `/${path}`;
