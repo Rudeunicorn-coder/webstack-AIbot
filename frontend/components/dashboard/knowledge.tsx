@@ -84,7 +84,8 @@ export function WebStackProKnowledge() {
 
     try {
       const token = localStorage.getItem("webstackpro_token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/knowledge/upload`, {
+      const base = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000").replace(/\/+$/, "");
+      const res = await fetch(`${base}${base.endsWith("/api") ? "" : "/api"}/knowledge/upload`, {
         method: "POST",
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         body,

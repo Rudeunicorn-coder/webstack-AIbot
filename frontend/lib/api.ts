@@ -3,7 +3,12 @@
  * Talks to the Express backend and attaches the WebStackPro JWT.
  */
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000").replace(/\/+$/, "");
+
+function apiPath(path: string): string {
+  const p = path.startsWith("/") ? path : `/${path}`;
+  return API_URL.endsWith("/api") ? `${API_URL}${p}` : `${API_URL}/api${p}`;
+}
 
 export class WebStackProAPIError extends Error {
   status: number;
@@ -29,7 +34,7 @@ async function request<T>(
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 
-  const res = await fetch(`${API_URL}${path}`, { ...options, headers });
+  const res = await fetch(apiPath(path), { ...options, headers });
 
   if (!res.ok) {
     let message = `WebStackPro: request failed (${res.status})`;
